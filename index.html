@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ArchHub | Control de Obras y Proyectos</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body class="bg-gray-950 text-gray-100 font-sans min-h-screen">
 
@@ -86,25 +85,20 @@
         </main>
     </div>
 
-    <script>
-        // =========================================================================
-        // 1. CONFIGURACIÓN GLOBAL DE CREDENCIALES
-        // =========================================================================
-        const SUPABASE_URL = "https://ckkrsiyntxpgtzhxtpxi.supabase.co/rest/v1/"; 
+    <script type="module">
+        // Importación directa del cliente oficial usando estándar ESM (Aislado y robusto)
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        const SUPABASE_URL = "https://ckkrsiynthxpgtzhxtpxi.supabase.co"; 
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNra3JzaXludHhwZ3R6aHh0cHhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDc5ODIsImV4cCI6MjA5NjA4Mzk4Mn0.csPIDvwyEp-cL-3JdNLkM6dH2OCTXl6abIvmJduMC10";
 
-        // Inicialización segura usando el objeto global inyectado por el UMD bundle
-        const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+        // Inicialización instantánea
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        if (!supabase) {
-            alert("Error crítico: No se pudo cargar el SDK de Supabase desde la red.");
-        }
-
-        // Estado Global de la Aplicación
         let isLoginMode = true;
         let perfilUsuario = null;
 
-        // Mapeo de Elementos de la Interfaz (DOM)
+        // Elementos de la Interfaz
         const authContainer = document.getElementById('auth-container');
         const dashboardContainer = document.getElementById('dashboard-container');
         const authForm = document.getElementById('auth-form');
@@ -114,9 +108,8 @@
         const toggleAuthMsg = document.getElementById('toggle-auth-msg');
         const authSubtitle = document.getElementById('auth-subtitle');
 
-        // Función Verificadora de Sesión Inicial al Cargar la Página
+        // Comprobación de sesión inicial
         async function initApp() {
-            if (!supabase) return;
             try {
                 const { data: { session }, error } = await supabase.auth.getSession();
                 if (error) throw error;
@@ -124,11 +117,11 @@
                     await cargarDashboard(session.user);
                 }
             } catch (err) {
-                console.error("Error comprobando estado de sesión activa:", err.message);
+                console.error("Error al comprobar sesión:", err.message);
             }
         }
 
-        // Intercambiador de Vistas Visuales (Login / Registro de Cero)
+        // Evento para alternar entre Login y Registro de Cero
         btnToggleAuth.addEventListener('click', (e) => {
             e.preventDefault();
             isLoginMode = !isLoginMode;
@@ -148,24 +141,20 @@
             }
         });
 
-        // Manejador del Envío del Formulario (Submit) con Captura de Errores Activa
+        // Evento del formulario de autenticación
         authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!supabase) return;
-
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
 
             try {
                 if (isLoginMode) {
-                    // FLUJO DE INICIO DE SESIÓN
                     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
                     if (error) throw error;
                     if (data.user) {
                         await cargarDashboard(data.user);
                     }
                 } else {
-                    // FLUJO DE REGISTRO DESDE CERO
                     const empresa = document.getElementById('auth-empresa').value;
                     const codigoCliente = document.getElementById('auth-codigo-cliente').value.toUpperCase();
                     const rol = codigoCliente === 'ADMIN' ? 'admin' : 'cliente';
@@ -174,46 +163,40 @@
                     if (error) throw error;
 
                     if (data.user) {
-                        // Inserción inmediata del perfil relacional complementario
                         const { error: profileError } = await supabase.from('perfiles').insert([
                             { id: data.user.id, id_cliente: codigoCliente, nombre_empresa: empresa, rol: rol }
                         ]);
-                        
                         if (profileError) throw profileError;
                         
-                        alert("Registro corporativo exitoso en la nube. Accediendo...");
+                        alert("Registro exitoso. Cargando panel...");
                         await cargarDashboard(data.user);
                     }
                 }
             } catch (err) {
-                alert("Error en la operación de acceso: " + err.message);
+                alert("Error: " + err.message);
                 console.error(err);
             }
         });
 
-        // Orquestador de Carga del Tablero Principal (Dashboard)
+        // Orquestador del Dashboard
         async function cargarDashboard(user) {
-            if (!supabase) return;
             try {
                 authContainer.classList.add('hidden');
                 dashboardContainer.classList.remove('hidden');
 
-                // 1. Obtención del perfil extendido del usuario logueado
                 const { data: perfil, error } = await supabase.from('perfiles').select('*').eq('id', user.id).single();
                 if (error || !perfil) {
-                    alert("Aviso: Autenticado correctamente, pero no se detectó un perfil asignado en la tabla 'perfiles' de la Base de Datos para este usuario.");
+                    alert("Autenticado correctamente, pero falta tu fila correspondiente en la tabla 'perfiles'.");
                     authContainer.classList.remove('hidden');
                     dashboardContainer.classList.add('hidden');
                     return;
                 }
                 perfilUsuario = perfil;
 
-                // Renderizar componentes de identidad en la cabecera
                 document.getElementById('user-welcome').innerText = `Hola, ${perfil.nombre_empresa}`;
                 const badge = document.getElementById('user-badge-role');
                 badge.innerText = perfil.rol === 'admin' ? 'Arquitecto Administrador' : `Cliente: ${perfil.id_cliente}`;
                 
-                // 2. Extraer Proyectos (Filtrados automáticamente en tiempo real por las políticas RLS de Postgres)
                 const { data: proyectos, error: prjError } = await supabase.from('proyectos').select('*');
                 if (prjError) throw prjError;
 
@@ -221,11 +204,10 @@
                 listContainer.innerHTML = '';
                 
                 if (proyectos.length === 0) {
-                    listContainer.innerHTML = '<p class="text-xs font-mono text-gray-500">Ningún proyecto asignado a este código de cliente actualmente.</p>';
+                    listContainer.innerHTML = '<p class="text-xs font-mono text-gray-500">Ningún proyecto asignado.</p>';
                     return;
                 }
 
-                // Construir tarjetas interactivas de proyectos
                 proyectos.forEach(p => {
                     const card = document.createElement('div');
                     card.className = "bg-gray-900 border border-gray-800 hover:border-cyan-500/40 p-4 rounded-xl cursor-pointer transition-all";
@@ -244,14 +226,13 @@
                     listContainer.appendChild(card);
                 });
             } catch (err) {
-                alert("Error al cargar la información del panel: " + err.message);
+                alert("Error al cargar tablero: " + err.message);
                 console.error(err);
             }
         }
 
-        // Consultor del Inventario de Materiales por Obra Seleccionada
+        // Consultor de Inventario
         async function consultarInventario(idProyecto) {
-            if (!supabase) return;
             try {
                 document.getElementById('inventario-fallback').classList.add('hidden');
                 const wrapper = document.getElementById('inventario-table-wrapper');
@@ -266,11 +247,10 @@
                 if (error) throw error;
 
                 if (!items || items.length === 0) {
-                    rowsContainer.innerHTML = '<tr><td colspan="6" class="text-center py-4 font-mono text-xs text-gray-500">No hay existencias registradas para esta obra.</td></tr>';
+                    rowsContainer.innerHTML = '<tr><td colspan="6" class="text-center py-4 font-mono text-xs text-gray-500">No hay existencias registradas.</td></tr>';
                     return;
                 }
 
-                // Construir las filas dinámicas de la tabla de materiales
                 items.forEach(item => {
                     const badgeColor = item.estado === 'PEDIDO URGENTE' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
                     const row = document.createElement('tr');
@@ -288,20 +268,19 @@
                     rowsContainer.appendChild(row);
                 });
             } catch (err) {
-                alert("Error al consultar el inventario físico: " + err.message);
+                alert("Error de inventario: " + err.message);
                 console.error(err);
             }
         }
 
-        // Manejador del Botón de Cierre de Sesión Seguro
+        // Cierre de Sesión
         document.getElementById('btn-logout').addEventListener('click', async () => {
-            if (!supabase) return;
             await supabase.auth.signOut();
             window.location.reload();
         });
 
-        // Hook de arranque de la aplicación web
-        window.onload = initApp;
+        // Ejecución inmediata al cargar el módulo
+        initApp();
     </script>
 </body>
 </html>
