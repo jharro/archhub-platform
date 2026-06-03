@@ -3,38 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ArchHub | Control de Obras</title>
+    <title>ArchHub | Control de Obras y Proyectos</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-950 text-gray-100 font-sans min-h-screen">
 
+    <div id="auth-container" class="max-w-md mx-auto pt-24 px-4">
+        <div class="bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-xl">
+            <h1 class="text-3xl font-extrabold text-cyan-400 mb-2 tracking-tight">ARCHHUB</h1>
+            <p class="text-gray-400 text-sm mb-6" id="auth-subtitle">Ingresa a tu cuenta de control de obras</p>
+            
+            <form id="auth-form" class="space-y-4">
+                <div id="register-fields" class="hidden space-y-4">
+                    <div>
+                        <label class="block text-xs font-mono uppercase text-gray-400 mb-1">Nombre de la Empresa / Arquitecto</label>
+                        <input type="text" id="auth-empresa" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono uppercase text-gray-400 mb-1">Código Identificador de Cliente</label>
+                        <input type="text" id="auth-codigo-cliente" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-500" placeholder="Usa ADMIN para control global">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-mono uppercase text-gray-400 mb-1">Correo Electrónico</label>
+                    <input type="email" id="auth-email" required class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-mono uppercase text-gray-400 mb-1">Contraseña</label>
+                    <input type="password" id="auth-password" required class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-500">
+                </div>
+                <button type="submit" id="btn-auth-submit" class="w-full bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-bold py-3 rounded-xl transition-all text-sm mt-2 shadow-lg shadow-cyan-500/20">
+                    Iniciar Sesión
+                </button>
+            </form>
+            
+            <div class="mt-6 pt-4 border-t border-gray-800 text-center text-xs text-gray-400">
+                <span id="toggle-auth-msg">¿No tienes cuenta?</span>
+                <button id="btn-toggle-auth" class="text-cyan-400 font-semibold hover:underline ml-1">Regístrate de cero</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard-container" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <header class="flex justify-between items-center mb-10 border-b border-gray-900 pb-5">
+            <div>
+                <span class="text-xs font-mono bg-cyan-500/10 border border-cyan-500/20 px-3 py-1 rounded-full text-cyan-400 uppercase font-bold tracking-wider" id="user-badge-role">Cargando...</span>
+                <h1 class="text-3xl font-black text-white mt-2" id="user-welcome">Panel de Control</h1>
+            </div>
+            <button id="btn-logout" class="bg-gray-900 border border-gray-800 hover:border-red-500/30 text-gray-400 hover:text-red-400 text-xs font-mono py-2 px-4 rounded-xl transition-all">
+                Cerrar Sesión
+            </button>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1 space-y-4">
+                <h2 class="text-lg font-bold tracking-tight text-gray-300 border-l-2 border-cyan-500 pl-2">Proyectos Disponibles</h2>
+                <div id="proyectos-list" class="space-y-3"></div>
+            </div>
+            
+            <div class="lg:col-span-2 bg-gray-900/40 border border-gray-900 p-6 rounded-2xl h-fit">
+                <h2 class="text-lg font-bold tracking-tight text-gray-300 mb-4 border-l-2 border-emerald-500 pl-2">Inventario en Obra e Insumos</h2>
+                <div id="inventario-fallback" class="text-sm text-gray-500 py-10 text-center font-mono">Selecciona un proyecto para ver materiales.</div>
+                <div id="inventario-table-wrapper" class="hidden overflow-x-auto">
+                    <table class="w-full text-left text-sm text-gray-400">
+                        <thead class="text-xs font-mono uppercase bg-gray-950 text-gray-400">
+                            <tr><th class="p-3">Código</th><th class="p-3">Insumo</th><th class="p-3">Requerido</th><th class="p-3 text-right">En Obra</th><th class="p-3 text-center">Estado</th></tr>
+                        </thead>
+                        <tbody id="inventario-rows" class="divide-y divide-gray-900"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
     <script>
-        // Inicialización global segura
+        // Configuración y carga segura
         const SUPABASE_URL = "https://ckkrsiynthxpgtzhxtpxi.supabase.co"; 
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNra3JzaXludHhwZ3R6aHh0cHhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDc5ODIsImV4cCI6MjA5NjA4Mzk4Mn0.csPIDvwyEp-cL-3JdNLkM6dH2OCTXl6abIvmJduMC10";
-        
-        // Creamos la instancia una sola vez
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // --- LÓGICA DE NEGOCIO ---
-        // ... (Aquí copias toda tu lógica de eventos y funciones) ...
-        
-        // IMPORTANTE: Cambia la llamada final en initApp
+        // Instancia renombrada para evitar conflictos con el SDK global
+        const dbCliente = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let isLoginMode = true;
+
         async function initApp() {
             try {
-                // Forzamos un pequeño delay para asegurar carga del DOM
-                setTimeout(async () => {
-                    const { data: { session }, error } = await supabase.auth.getSession();
-                    if (session) {
-                        await cargarDashboard(session.user);
-                    }
-                }, 500);
-            } catch (err) {
-                console.error("Error de conexión:", err);
-            }
+                const { data: { session } } = await dbCliente.auth.getSession();
+                if (session) await cargarDashboard(session.user);
+            } catch (err) { console.error("Error inicial:", err); }
         }
-        
+
+        // --- LÓGICA DE EVENTOS Y FUNCIONES (Mantiene tu lógica funcional) ---
+        document.getElementById('btn-toggle-auth').addEventListener('click', (e) => {
+            e.preventDefault();
+            isLoginMode = !isLoginMode;
+            document.getElementById('register-fields').classList.toggle('hidden');
+        });
+
+        document.getElementById('auth-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+
+            if (isLoginMode) {
+                const { data, error } = await dbCliente.auth.signInWithPassword({ email, password });
+                if (error) alert(error.message);
+                else await cargarDashboard(data.user);
+            } else {
+                const { error } = await dbCliente.auth.signUp({ email, password });
+                if (error) alert(error.message);
+                else alert("Registro exitoso. Inicia sesión ahora.");
+            }
+        });
+
+        async function cargarDashboard(user) {
+            document.getElementById('auth-container').classList.add('hidden');
+            document.getElementById('dashboard-container').classList.remove('hidden');
+            // ... (resto de tu lógica de renderizado)
+        }
+
+        document.getElementById('btn-logout').addEventListener('click', async () => {
+            await dbCliente.auth.signOut();
+            window.location.reload();
+        });
+
         window.onload = initApp;
     </script>
 </body>
