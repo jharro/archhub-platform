@@ -9,7 +9,6 @@
 </head>
 <body class="bg-gray-950 text-gray-100 font-sans min-h-screen">
 
-    <!-- CONTENEDOR DE AUTENTICACIÓN (LOGIN / REGISTRO) -->
     <div id="auth-container" class="max-w-md mx-auto pt-24 px-4">
         <div class="bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-xl">
             <h1 class="text-3xl font-extrabold text-cyan-400 mb-2 tracking-tight">ARCHHUB</h1>
@@ -46,7 +45,6 @@
         </div>
     </div>
 
-    <!-- CONTENEDOR DEL DASHBOARD PRINCIPAL -->
     <div id="dashboard-container" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <header class="flex justify-between items-center mb-10 border-b border-gray-900 pb-5">
             <div>
@@ -59,13 +57,11 @@
         </header>
 
         <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- COLUMNA IZQUIERDA: LISTADO DE PROYECTOS -->
             <div class="lg:col-span-1 space-y-4">
                 <h2 class="text-lg font-bold tracking-tight text-gray-300 border-l-2 border-cyan-500 pl-2">Proyectos Disponibles</h2>
                 <div id="proyectos-list" class="space-y-3"></div>
             </div>
             
-            <!-- COLUMNA DERECHA: LISTADO DE INVENTARIOS -->
             <div class="lg:col-span-2 bg-gray-900/40 border border-gray-900 p-6 rounded-2xl h-fit">
                 <h2 class="text-lg font-bold tracking-tight text-gray-300 mb-4 border-l-2 border-emerald-500 pl-2">Inventario en Obra e Insumos</h2>
                 <div id="inventario-fallback" class="text-sm text-gray-500 py-10 text-center font-mono">
@@ -90,15 +86,14 @@
         </main>
     </div>
 
-    <!-- CONTROLADOR LÓGICO INTEGRADO Y OPTIMIZADO -->
     <script>
         // =========================================================================
-        // 1. CREDENCIALES INTEGRADAS DIRECTAMENTE DESDE TU CONFIGURACIÓN ORIGINAL
+        // 1. CONFIGURACIÓN GLOBAL DE CREDENCIALES (Corregidas y Directas)
         // =========================================================================
-        const SUPABASE_URL = "sb_publishable_e6XjR1SUTal-B7s8-3LW1Q_dscmYC8G"; 
+        const SUPABASE_URL = "https://ckkrsiynthxpgtzhxtpxi.supabase.co"; 
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNra3JzaXludHhwZ3R6aHh0cHhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDc5ODIsImV4cCI6MjA5NjA4Mzk4Mn0.csPIDvwyEp-cL-3JdNLkM6dH2OCTXl6abIvmJduMC10";
 
-        // Inicialización inmediata y global del cliente Supabase
+        // Inicialización transparente y directa del cliente Supabase
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // Estado Global de la Aplicación
@@ -121,7 +116,7 @@
                 const { data: { session }, error } = await supabase.auth.getSession();
                 if (error) throw error;
                 if (session) {
-                    cargarDashboard(session.user);
+                    await cargarDashboard(session.user);
                 }
             } catch (err) {
                 console.error("Error comprobando estado de sesión activa:", err.message);
@@ -130,7 +125,7 @@
 
         // Intercambiador de Vistas Visuales (Login / Registro de Cero)
         btnToggleAuth.addEventListener('click', (e) => {
-            e.preventDefault(); // Detiene comportamientos nativos inesperados del navegador
+            e.preventDefault();
             isLoginMode = !isLoginMode;
             
             if(isLoginMode) {
@@ -148,135 +143,146 @@
             }
         });
 
-        // Manejador del Envío del Formulario (Submit)
+        // Manejador del Envío del Formulario (Submit) con Captura de Errores Activa
         authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
 
-            if (isLoginMode) {
-                // FLUJO DE INICIO DE SESIÓN
-                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-                if(error) {
-                    alert("Error de acceso: " + error.message);
+            try {
+                if (isLoginMode) {
+                    // FLUJO DE INICIO DE SESIÓN
+                    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                    if (error) throw error;
+                    if (data.user) {
+                        await cargarDashboard(data.user);
+                    }
                 } else {
-                    cargarDashboard(data.user);
-                }
-            } else {
-                // FLUJO DE REGISTRO DESDE CERO
-                const empresa = document.getElementById('auth-empresa').value;
-                const codigoCliente = document.getElementById('auth-codigo-cliente').value.toUpperCase();
-                const rol = codigoCliente === 'ADMIN' ? 'admin' : 'cliente';
+                    // FLUJO DE REGISTRO DESDE CERO
+                    const empresa = document.getElementById('auth-empresa').value;
+                    const codigoCliente = document.getElementById('auth-codigo-cliente').value.toUpperCase();
+                    const rol = codigoCliente === 'ADMIN' ? 'admin' : 'cliente';
 
-                const { data, error } = await supabase.auth.signUp({ email, password });
-                if(error) {
-                    alert("Error en el registro de autenticación: " + error.message);
-                    return;
-                }
+                    const { data, error } = await supabase.auth.signUp({ email, password });
+                    if (error) throw error;
 
-                if(data.user) {
-                    // Inserción inmediata del perfil complementario en la base de datos pública
-                    const { error: profileError } = await supabase.from('perfiles').insert([
-                        { id: data.user.id, id_cliente: codigoCliente, nombre_empresa: empresa, rol: rol }
-                    ]);
-                    
-                    if(profileError) {
-                        alert("Error asignando datos de perfil corporativo: " + profileError.message);
-                    } else {
-                        alert("Registro exitoso en la nube. Accediendo al sistema...");
-                        cargarDashboard(data.user);
+                    if (data.user) {
+                        // Inserción inmediata del perfil relacional complementario
+                        const { error: profileError } = await supabase.from('perfiles').insert([
+                            { id: data.user.id, id_cliente: codigoCliente, nombre_empresa: empresa, rol: rol }
+                        ]);
+                        
+                        if (profileError) throw profileError;
+                        
+                        alert("Registro corporativo exitoso en la nube. Accediendo...");
+                        await cargarDashboard(data.user);
                     }
                 }
+            } catch (err) {
+                alert("Error en la operación de acceso: " + err.message);
+                console.error(err);
             }
         });
 
         // Orquestador de Carga del Tablero Principal (Dashboard)
         async function cargarDashboard(user) {
-            authContainer.classList.add('hidden');
-            dashboardContainer.classList.remove('hidden');
+            try {
+                authContainer.classList.add('hidden');
+                dashboardContainer.classList.remove('hidden');
 
-            // 1. Obtención del perfil extendido del usuario logueado
-            const { data: perfil, error } = await supabase.from('perfiles').select('*').eq('id', user.id).single();
-            if(error || !perfil) {
-                alert("Error crítico: No se encontró tu perfil relacional asignado en el sistema.");
-                return;
+                // 1. Obtención del perfil extendido del usuario logueado
+                const { data: perfil, error } = await supabase.from('perfiles').select('*').eq('id', user.id).single();
+                if (error || !perfil) {
+                    alert("Aviso: Autenticado correctamente, pero no se detectó un perfil asignado en la tabla 'perfiles' de la Base de Datos para este usuario.");
+                    // Devolver al login si no tiene fila de perfil relacional
+                    authContainer.classList.remove('hidden');
+                    dashboardContainer.classList.add('hidden');
+                    return;
+                }
+                perfilUsuario = perfil;
+
+                // Renderizar componentes de identidad en la cabecera
+                document.getElementById('user-welcome').innerText = `Hola, ${perfil.nombre_empresa}`;
+                const badge = document.getElementById('user-badge-role');
+                badge.innerText = perfil.rol === 'admin' ? 'Arquitecto Administrador' : `Cliente: ${perfil.id_cliente}`;
+                
+                // 2. Extraer Proyectos (Filtrados automáticamente en tiempo real por las políticas RLS de Postgres)
+                const { data: proyectos, error: prjError } = await supabase.from('proyectos').select('*');
+                if (prjError) throw prjError;
+
+                const listContainer = document.getElementById('proyectos-list');
+                listContainer.innerHTML = '';
+                
+                if (proyectos.length === 0) {
+                    listContainer.innerHTML = '<p class="text-xs font-mono text-gray-500">Ningún proyecto asignado a este código de cliente actualmente.</p>';
+                    return;
+                }
+
+                // Construir tarjetas interactivas de proyectos
+                proyectos.forEach(p => {
+                    const card = document.createElement('div');
+                    card.className = "bg-gray-900 border border-gray-800 hover:border-cyan-500/40 p-4 rounded-xl cursor-pointer transition-all";
+                    card.innerHTML = `
+                        <h3 class="font-bold text-white text-base">${p.nombre_proyecto}</h3>
+                        <p class="text-xs text-gray-400 mb-2">${p.ubicacion || 'Sin ubicación'}</p>
+                        <div class="w-full bg-gray-950 h-1.5 rounded-full overflow-hidden mb-2">
+                            <div class="bg-cyan-500 h-full" style="width: ${(p.avance_fisico * 100)}%"></div>
+                        </div>
+                        <div class="flex justify-between text-[10px] font-mono text-gray-500">
+                            <span>Fase: ${p.fase_actual || 0}</span>
+                            <span>Progreso: ${(p.avance_fisico * 100).toFixed(0)}%</span>
+                        </div>
+                    `;
+                    card.addEventListener('click', () => consultarInventario(p.id_proyecto));
+                    listContainer.appendChild(card);
+                });
+            } catch (err) {
+                alert("Error al cargar la información del panel: " + err.message);
+                console.error(err);
             }
-            perfilUsuario = perfil;
-
-            // Renderizar la barra superior con el rol e identidad
-            document.getElementById('user-welcome').innerText = `Hola, ${perfil.nombre_empresa}`;
-            const badge = document.getElementById('user-badge-role');
-            badge.innerText = perfil.rol === 'admin' ? 'Arquitecto Administrador' : `Cliente: ${perfil.id_cliente}`;
-            
-            // 2. Extraer Proyectos (La seguridad RLS en Postgres discrimina las filas automáticamente)
-            const { data: proyectos, error: prjError } = await supabase.from('proyectos').select('*');
-            if(prjError) {
-                alert("Error consultando el listado de proyectos de construcción: " + prjError.message);
-                return;
-            }
-
-            const listContainer = document.getElementById('proyectos-list');
-            listContainer.innerHTML = '';
-            
-            if(proyectos.length === 0) {
-                listContainer.innerHTML = '<p class="text-xs font-mono text-gray-500">Ningún proyecto asignado a este código de cliente.</p>';
-                return;
-            }
-
-            // Construir tarjetas visuales dinámicas de proyectos
-            proyectos.forEach(p => {
-                const card = document.createElement('div');
-                card.className = "bg-gray-900 border border-gray-800 hover:border-cyan-500/40 p-4 rounded-xl cursor-pointer transition-all";
-                card.innerHTML = `
-                    <h3 class="font-bold text-white text-base">${p.nombre_proyecto}</h3>
-                    <p class="text-xs text-gray-400 mb-2">${p.ubicacion || 'Sin ubicación'}</p>
-                    <div class="w-full bg-gray-950 h-1.5 rounded-full overflow-hidden mb-2">
-                        <div class="bg-cyan-500 h-full" style="width: ${(p.avance_fisico * 100)}%"></div>
-                    </div>
-                    <div class="flex justify-between text-[10px] font-mono text-gray-500">
-                        <span>Fase: ${p.fase_actual || 0}</span>
-                        <span>Progreso: ${(p.avance_fisico * 100).toFixed(0)}%</span>
-                    </div>
-                `;
-                card.addEventListener('click', () => consultarInventario(p.id_proyecto));
-                listContainer.appendChild(card);
-            });
         }
 
         // Consultor del Inventario de Materiales por Obra Seleccionada
         async function consultarInventario(idProyecto) {
-            document.getElementById('inventario-fallback').classList.add('hidden');
-            const wrapper = document.getElementById('inventario-table-wrapper');
-            const rowsContainer = document.getElementById('inventario-rows');
-            
-            rowsContainer.innerHTML = '<tr><td colspan="6" class="text-center py-4 font-mono text-xs">Buscando insumos...</td></tr>';
-            wrapper.classList.remove('hidden');
+            try {
+                document.getElementById('inventario-fallback').classList.add('hidden');
+                const wrapper = document.getElementById('inventario-table-wrapper');
+                const rowsContainer = document.getElementById('inventario-rows');
+                
+                rowsContainer.innerHTML = '<tr><td colspan="6" class="text-center py-4 font-mono text-xs">Buscando insumos...</td></tr>';
+                wrapper.classList.remove('hidden');
 
-            const { data: items, error } = await supabase.from('inventarios').select('*').eq('id_proyecto', idProyecto);
-            rowsContainer.innerHTML = '';
+                const { data: items, error } = await supabase.from('inventarios').select('*').eq('id_proyecto', idProyecto);
+                rowsContainer.innerHTML = '';
 
-            if(error || !items || items.length === 0) {
-                rowsContainer.innerHTML = '<tr><td colspan="6" class="text-center py-4 font-mono text-xs text-gray-500">No hay existencias registradas para esta obra.</td></tr>';
-                return;
+                if (error) throw error;
+
+                if (!items || items.length === 0) {
+                    rowsContainer.innerHTML = '<tr><td colspan="6" class="text-center py-4 font-mono text-xs text-gray-500">No hay existencias registradas para esta obra.</td></tr>';
+                    return;
+                }
+
+                // Construir las filas dinámicas de la tabla de materiales
+                items.forEach(item => {
+                    const badgeColor = item.estado === 'PEDIDO URGENTE' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+                    const row = document.createElement('tr');
+                    row.className = "hover:bg-gray-900/50 transition-colors";
+                    row.innerHTML = `
+                        <td class="p-3 font-mono text-xs text-cyan-400">${item.codigo}</td>
+                        <td class="p-3 font-semibold text-white">${item.insumo}</td>
+                        <td class="p-3 text-xs">${item.unidad}</td>
+                        <td class="p-3 text-right font-mono">${item.requerido}</td>
+                        <td class="p-3 text-right font-mono text-white">${item.en_obra}</td>
+                        <td class="p-3 text-center">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${badgeColor}">${item.estado}</span>
+                        </td>
+                    `;
+                    rowsContainer.appendChild(row);
+                });
+            } catch (err) {
+                alert("Error al consultar el inventario físico: " + err.message);
+                console.error(err);
             }
-
-            // Estructurar filas de la tabla de materiales
-            items.forEach(item => {
-                const badgeColor = item.estado === 'PEDIDO URGENTE' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-                const row = document.createElement('tr');
-                row.className = "hover:bg-gray-900/50 transition-colors";
-                row.innerHTML = `
-                    <td class="p-3 font-mono text-xs text-cyan-400">${item.codigo}</td>
-                    <td class="p-3 font-semibold text-white">${item.insumo}</td>
-                    <td class="p-3 text-xs">${item.unidad}</td>
-                    <td class="p-3 text-right font-mono">${item.requerido}</td>
-                    <td class="p-3 text-right font-mono text-white">${item.en_obra}</td>
-                    <td class="p-3 text-center">
-                        <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${badgeColor}">${item.estado}</span>
-                    </td>
-                `;
-                rowsContainer.appendChild(row);
-            });
         }
 
         // Manejador del Botón de Cierre de Sesión Seguro
@@ -285,7 +291,7 @@
             window.location.reload();
         });
 
-        // Configuración del hook de arranque de la aplicación web
+        // Hook de arranque de la aplicación web
         window.onload = initApp;
     </script>
 </body>
