@@ -9,6 +9,7 @@
 </head>
 <body class="bg-gray-950 text-gray-100 font-sans min-h-screen">
 
+    <!-- CONTENEDOR DE AUTENTICACIÓN (LOGIN / REGISTRO) -->
     <div id="auth-container" class="max-w-md mx-auto pt-24 px-4">
         <div class="bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-xl">
             <h1 class="text-3xl font-extrabold text-cyan-400 mb-2 tracking-tight">ARCHHUB</h1>
@@ -45,6 +46,7 @@
         </div>
     </div>
 
+    <!-- CONTENEDOR DEL DASHBOARD PRINCIPAL -->
     <div id="dashboard-container" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <header class="flex justify-between items-center mb-10 border-b border-gray-900 pb-5">
             <div>
@@ -57,11 +59,13 @@
         </header>
 
         <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- COLUMNA IZQUIERDA: LISTADO DE PROYECTOS -->
             <div class="lg:col-span-1 space-y-4">
                 <h2 class="text-lg font-bold tracking-tight text-gray-300 border-l-2 border-cyan-500 pl-2">Proyectos Disponibles</h2>
-                <div id="proyectos-list" class="space-y-3">
-                    </div>
+                <div id="proyectos-list" class="space-y-3"></div>
             </div>
+            
+            <!-- COLUMNA DERECHA: LISTADO DE INVENTARIOS -->
             <div class="lg:col-span-2 bg-gray-900/40 border border-gray-900 p-6 rounded-2xl h-fit">
                 <h2 class="text-lg font-bold tracking-tight text-gray-300 mb-4 border-l-2 border-emerald-500 pl-2">Inventario en Obra e Insumos</h2>
                 <div id="inventario-fallback" class="text-sm text-gray-500 py-10 text-center font-mono">
@@ -79,30 +83,29 @@
                                 <th class="p-3 text-center">Estado</th>
                             </tr>
                         </thead>
-                        <tbody id="inventario-rows" class="divide-y divide-gray-900">
-                            </tbody>
+                        <tbody id="inventario-rows" class="divide-y divide-gray-900"></tbody>
                     </table>
                 </div>
             </div>
         </main>
     </div>
 
+    <!-- CONTROLADOR LÓGICO INTEGRADO Y OPTIMIZADO -->
     <script>
-        // CONFIGURACIÓN DE CREDENCIALES (Se inyectan dinámicamente en producción)
-        const SUPABASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'sb_publishable_e6XjR1SUTal-B7s8-3LW1Q_dscmYC8G' : '';
-        const SUPABASE_ANON_KEY = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNra3JzaXludHhwZ3R6aHh0cHhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDc5ODIsImV4cCI6MjA5NjA4Mzk4Mn0.csPIDvwyEp-cL-3JdNLkM6dH2OCTXl6abIvmJduMC10' : '';
+        // =========================================================================
+        // 1. CREDENCIALES INTEGRADAS DIRECTAMENTE DESDE TU CONFIGURACIÓN ORIGINAL
+        // =========================================================================
+        const SUPABASE_URL = "sb_publishable_e6XjR1SUTal-B7s8-3LW1Q_dscmYC8G"; 
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNra3JzaXludHhwZ3R6aHh0cHhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDc5ODIsImV4cCI6MjA5NjA4Mzk4Mn0.csPIDvwyEp-cL-3JdNLkM6dH2OCTXl6abIvmJduMC10";
 
-        // Inicialización condicionada para soportar variables Netlify en producción
-        let supabase;
-        if(SUPABASE_URL && SUPABASE_ANON_KEY) {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        }
+        // Inicialización inmediata y global del cliente Supabase
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Estado Global de la App
+        // Estado Global de la Aplicación
         let isLoginMode = true;
         let perfilUsuario = null;
 
-        // Elementos DOM
+        // Mapeo de Elementos de la Interfaz (DOM)
         const authContainer = document.getElementById('auth-container');
         const dashboardContainer = document.getElementById('dashboard-container');
         const authForm = document.getElementById('auth-form');
@@ -112,27 +115,24 @@
         const toggleAuthMsg = document.getElementById('toggle-auth-msg');
         const authSubtitle = document.getElementById('auth-subtitle');
 
-        // Inicializador dinámico para leer variables inyectadas de Netlify en runtime
+        // Función Verificadora de Sesión Inicial al Cargar la Página
         async function initApp() {
-            if(!supabase) {
-                // Intento leer variables globales provistas por la compilación del frontend
-                const resUrl = await fetch('/api/config-url').catch(() => null);
-                // Si no se usan endpoints de Serverless, Netlify permite leerlas directo si las inyectamos o hardcodeamos las públicas aquí para pruebas:
-                const fallbackUrl = "https://tu-proyecto.supabase.co"; 
-                const fallbackKey = "tu-anon-key-real";
-                supabase = window.supabase.createClient(fallbackUrl, fallbackKey);
-            }
-            
-            // Verificar si el usuario ya está logueado
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                cargarDashboard(session.user);
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                if (error) throw error;
+                if (session) {
+                    cargarDashboard(session.user);
+                }
+            } catch (err) {
+                console.error("Error comprobando estado de sesión activa:", err.message);
             }
         }
 
-        // Cambio entre Login y Registro
-        btnToggleAuth.addEventListener('click', () => {
+        // Intercambiador de Vistas Visuales (Login / Registro de Cero)
+        btnToggleAuth.addEventListener('click', (e) => {
+            e.preventDefault(); // Detiene comportamientos nativos inesperados del navegador
             isLoginMode = !isLoginMode;
+            
             if(isLoginMode) {
                 registerFields.classList.add('hidden');
                 authSubtitle.innerText = "Ingresa a tu cuenta de control de obras";
@@ -148,66 +148,70 @@
             }
         });
 
-        // Orquestador de Autenticación
+        // Manejador del Envío del Formulario (Submit)
         authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
 
             if (isLoginMode) {
-                // LOGUEARSE
+                // FLUJO DE INICIO DE SESIÓN
                 const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-                if(error) alert("Error de acceso: " + error.message);
-                else cargarDashboard(data.user);
+                if(error) {
+                    alert("Error de acceso: " + error.message);
+                } else {
+                    cargarDashboard(data.user);
+                }
             } else {
-                // REGISTRARSE DE CERO
+                // FLUJO DE REGISTRO DESDE CERO
                 const empresa = document.getElementById('auth-empresa').value;
                 const codigoCliente = document.getElementById('auth-codigo-cliente').value.toUpperCase();
                 const rol = codigoCliente === 'ADMIN' ? 'admin' : 'cliente';
 
                 const { data, error } = await supabase.auth.signUp({ email, password });
                 if(error) {
-                    alert("Error en el registro: " + error.message);
+                    alert("Error en el registro de autenticación: " + error.message);
                     return;
                 }
 
                 if(data.user) {
-                    // Insertar perfil extendido en la tabla pública
+                    // Inserción inmediata del perfil complementario en la base de datos pública
                     const { error: profileError } = await supabase.from('perfiles').insert([
                         { id: data.user.id, id_cliente: codigoCliente, nombre_empresa: empresa, rol: rol }
                     ]);
                     
-                    if(profileError) alert("Error creando perfil asociativo: " + profileError.message);
-                    else {
-                        alert("Registro exitoso. Iniciando sesión.");
+                    if(profileError) {
+                        alert("Error asignando datos de perfil corporativo: " + profileError.message);
+                    } else {
+                        alert("Registro exitoso en la nube. Accediendo al sistema...");
                         cargarDashboard(data.user);
                     }
                 }
             }
         });
 
-        // Cargar Datos en la UI
+        // Orquestador de Carga del Tablero Principal (Dashboard)
         async function cargarDashboard(user) {
             authContainer.classList.add('hidden');
             dashboardContainer.classList.remove('hidden');
 
-            // 1. Obtener perfil del usuario
+            // 1. Obtención del perfil extendido del usuario logueado
             const { data: perfil, error } = await supabase.from('perfiles').select('*').eq('id', user.id).single();
             if(error || !perfil) {
-                alert("No se encontró un perfil verificado para este usuario.");
+                alert("Error crítico: No se encontró tu perfil relacional asignado en el sistema.");
                 return;
             }
             perfilUsuario = perfil;
 
-            // Actualizar interfaz con roles reales
+            // Renderizar la barra superior con el rol e identidad
             document.getElementById('user-welcome').innerText = `Hola, ${perfil.nombre_empresa}`;
             const badge = document.getElementById('user-badge-role');
             badge.innerText = perfil.rol === 'admin' ? 'Arquitecto Administrador' : `Cliente: ${perfil.id_cliente}`;
             
-            // 2. Cargar Proyectos (La consulta se filtra SOLA en Postgres gracias a la RLS aplicada)
+            // 2. Extraer Proyectos (La seguridad RLS en Postgres discrimina las filas automáticamente)
             const { data: proyectos, error: prjError } = await supabase.from('proyectos').select('*');
             if(prjError) {
-                alert("Error consultando proyectos: " + prjError.message);
+                alert("Error consultando el listado de proyectos de construcción: " + prjError.message);
                 return;
             }
 
@@ -219,6 +223,7 @@
                 return;
             }
 
+            // Construir tarjetas visuales dinámicas de proyectos
             proyectos.forEach(p => {
                 const card = document.createElement('div');
                 card.className = "bg-gray-900 border border-gray-800 hover:border-cyan-500/40 p-4 rounded-xl cursor-pointer transition-all";
@@ -238,7 +243,7 @@
             });
         }
 
-        // Consultar Materiales de un Proyecto
+        // Consultor del Inventario de Materiales por Obra Seleccionada
         async function consultarInventario(idProyecto) {
             document.getElementById('inventario-fallback').classList.add('hidden');
             const wrapper = document.getElementById('inventario-table-wrapper');
@@ -255,6 +260,7 @@
                 return;
             }
 
+            // Estructurar filas de la tabla de materiales
             items.forEach(item => {
                 const badgeColor = item.estado === 'PEDIDO URGENTE' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
                 const row = document.createElement('tr');
@@ -273,13 +279,13 @@
             });
         }
 
-        // Cierre de Sesión
+        // Manejador del Botón de Cierre de Sesión Seguro
         document.getElementById('btn-logout').addEventListener('click', async () => {
             await supabase.auth.signOut();
             window.location.reload();
         });
 
-        // Ejecutar Inicialización
+        // Configuración del hook de arranque de la aplicación web
         window.onload = initApp;
     </script>
 </body>
