@@ -2,48 +2,62 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>ArchHub | Debug Mode</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArchHub | Conexión Segura</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-950 text-white p-10">
+<body class="bg-gray-950 text-white font-sans min-h-screen p-8">
 
-    <div id="debug-log" class="font-mono text-xs text-yellow-500 mb-5"></div>
-
-    <div id="main-content">
-        <h1>Cargando ArchHub...</h1>
+    <div id="status-container" class="max-w-lg mx-auto bg-gray-900 border border-gray-800 p-6 rounded-xl">
+        <h2 class="text-xl font-bold text-cyan-400 mb-4">Estado del Sistema</h2>
+        <div id="debug-log" class="font-mono text-xs text-gray-400 space-y-2"></div>
     </div>
 
     <script>
         const log = (msg) => {
-            document.getElementById('debug-log').innerHTML += `<p>> ${msg}</p>`;
+            const div = document.getElementById('debug-log');
+            div.innerHTML += `<p>> ${msg}</p>`;
             console.log(msg);
         };
 
-        try {
-            log("Iniciando carga de Supabase...");
-            
-            const SUPABASE_URL = "https://ckkrsiynthxpgtzhxtpxi.supabase.co"; 
-            const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNra3JzaXludHhwZ3R6aHh0cHhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDc5ODIsImV4cCI6MjA5NjA4Mzk4Mn0.csPIDvwyEp-cL-3JdNLkM6dH2OCTXl6abIvmJduMC10";
+        const SUPABASE_URL = "https://ckkrsiynthxpgtzhxtpxi.supabase.co"; 
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNra3JzaXludHhwZ3R6aHh0cHhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDc5ODIsImV4cCI6MjA5NjA4Mzk4Mn0.csPIDvwyEp-cL-3JdNLkM6dH2OCTXl6abIvmJduMC10";
 
-            if (!window.supabase) {
-                throw new Error("El SDK de Supabase no cargó. Verifica tu conexión a internet.");
+        async function init() {
+            try {
+                log("1. Inicializando cliente...");
+                if (!window.supabase) throw new Error("SDK no cargado");
+                
+                const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                // Prueba de DNS/Conectividad antes de llamar a tablas
+                log("2. Verificando conectividad...");
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+                    method: 'HEAD',
+                    headers: { 'apikey': SUPABASE_ANON_KEY }
+                });
+
+                if (response.status === 401 || response.status === 200) {
+                    log("3. Conexión establecida correctamente.");
+                    
+                    // Carga de datos
+                    const { count, error } = await db.from('perfiles').select('*', { count: 'exact', head: true });
+                    if (error) {
+                        log("Error de RLS (Permisos): " + error.message);
+                    } else {
+                        log("ÉXITO: Tablas accesibles. Registros: " + count);
+                    }
+                } else {
+                    log("Error de servidor. Código: " + response.status);
+                }
+            } catch (err) {
+                log("CRITICAL: " + err.message);
+                log("NOTA: Si ves 'Failed to fetch', el problema es que tu ISP o Netlify no pueden resolver el dominio 'ckkrsiynthxpgtzhxtpxi.supabase.co'");
             }
-
-            const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            log("Cliente creado exitosamente.");
-
-            // Prueba de conexión real
-            db.from('perfiles').select('count', { count: 'exact', head: true })
-            .then(({ count, error }) => {
-                if (error) log("Error de API: " + error.message);
-                else log("Conexión a base de datos exitosa. Tablas detectadas: " + count);
-            });
-
-        } catch (e) {
-            log("CRITICAL ERROR: " + e.message);
         }
+
+        window.onload = init;
     </script>
 </body>
-</html>
 </html>
