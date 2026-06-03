@@ -2,45 +2,48 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ArchHub | Control de Obras y Proyectos</title>
+    <title>ArchHub | Debug Mode</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-950 text-gray-100 font-sans min-h-screen">
+<body class="bg-gray-950 text-white p-10">
+
+    <div id="debug-log" class="font-mono text-xs text-yellow-500 mb-5"></div>
+
+    <div id="main-content">
+        <h1>Cargando ArchHub...</h1>
+    </div>
 
     <script>
-        // Configuración
-        const SUPABASE_URL = "https://ckkrsiynthxpgtzhxtpxi.supabase.co"; 
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNra3JzaXludHhwZ3R6aHh0cHhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDc5ODIsImV4cCI6MjA5NjA4Mzk4Mn0.csPIDvwyEp-cL-3JdNLkM6dH2OCTXl6abIvmJduMC10";
+        const log = (msg) => {
+            document.getElementById('debug-log').innerHTML += `<p>> ${msg}</p>`;
+            console.log(msg);
+        };
 
-        // Usamos window.supabase para acceder al SDK cargado globalmente
-        const dbCliente = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        try {
+            log("Iniciando carga de Supabase...");
+            
+            const SUPABASE_URL = "https://ckkrsiynthxpgtzhxtpxi.supabase.co"; 
+            const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNra3JzaXludHhwZ3R6aHh0cHhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDc5ODIsImV4cCI6MjA5NjA4Mzk4Mn0.csPIDvwyEp-cL-3JdNLkM6dH2OCTXl6abIvmJduMC10";
 
-        let isLoginMode = true;
-
-        // Función de inicialización segura
-        async function initApp() {
-            try {
-                // Usamos un pequeño delay por si la red de Netlify es lenta
-                setTimeout(async () => {
-                    const { data: { session }, error } = await dbCliente.auth.getSession();
-                    if (session) {
-                        await cargarDashboard(session.user);
-                    }
-                }, 300);
-            } catch (err) {
-                console.log("No hay sesión activa o error de carga:", err.message);
+            if (!window.supabase) {
+                throw new Error("El SDK de Supabase no cargó. Verifica tu conexión a internet.");
             }
+
+            const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            log("Cliente creado exitosamente.");
+
+            // Prueba de conexión real
+            db.from('perfiles').select('count', { count: 'exact', head: true })
+            .then(({ count, error }) => {
+                if (error) log("Error de API: " + error.message);
+                else log("Conexión a base de datos exitosa. Tablas detectadas: " + count);
+            });
+
+        } catch (e) {
+            log("CRITICAL ERROR: " + e.message);
         }
-
-        // --- MANTÉN AQUÍ TODAS TUS FUNCIONES (cargarDashboard, consultarInventario, etc.) ---
-        // SOLO ASEGÚRATE DE CAMBIAR `supabase` por `dbCliente` en todas tus llamadas.
-
-        // Ejemplo:
-        // const { data, error } = await dbCliente.from('proyectos').select('*');
-
-        window.onload = initApp;
     </script>
 </body>
+</html>
 </html>
